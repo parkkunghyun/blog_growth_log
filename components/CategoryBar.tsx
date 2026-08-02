@@ -6,43 +6,39 @@ import { CATEGORIES } from "@/lib/categories";
 
 export function CategoryBar({
   active = "all",
-  variant = "home",
 }: {
   active?: "all" | string;
   variant?: "home" | "blog";
 }) {
   const { lang, t } = useLang();
-  const base =
-    variant === "home"
-      ? "whitespace-nowrap px-6 py-2 rounded-full font-medium transition-colors"
-      : "whitespace-nowrap px-4 py-2 rounded-full transition-colors";
 
-  const activeCls =
-    variant === "home"
-      ? "bg-on-surface text-surface font-semibold"
-      : "bg-secondary-container text-on-secondary-container font-semibold";
-  const idleCls =
-    variant === "home"
-      ? "bg-surface-container-high text-on-surface-variant hover:bg-secondary-container"
-      : "bg-surface-container hover:bg-surface-container-high";
+  const items = [
+    { id: "all", href: "/blog", label: t("cat.all") },
+    ...CATEGORIES.map((c) => ({
+      id: c.id,
+      href: `/blog?cat=${c.id}`,
+      label: lang === "ko" ? c.ko : c.en,
+    })),
+  ];
 
   return (
-    <div className="flex items-center gap-2 md:gap-4 overflow-x-auto pb-2 scrollbar-hide">
-      <Link
-        href="/blog"
-        className={`${base} ${active === "all" ? activeCls : idleCls}`}
-      >
-        {t("cat.all")}
-      </Link>
-      {CATEGORIES.map((c) => (
-        <Link
-          key={c.id}
-          href={`/blog?cat=${c.id}`}
-          className={`${base} ${active === c.id ? activeCls : idleCls}`}
-        >
-          {lang === "ko" ? c.ko : c.en}
-        </Link>
-      ))}
-    </div>
+    <nav className="flex items-center gap-5 md:gap-7 overflow-x-auto pb-1 scrollbar-hide border-b border-outline-variant">
+      {items.map((item) => {
+        const isActive = active === item.id;
+        return (
+          <Link
+            key={item.id}
+            href={item.href}
+            className={`whitespace-nowrap pb-3 text-[12px] md:text-[13px] uppercase tracking-[0.12em] transition-colors border-b-2 -mb-px ${
+              isActive
+                ? "text-on-surface font-bold border-on-surface"
+                : "text-on-surface-variant border-transparent hover:text-on-surface"
+            }`}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

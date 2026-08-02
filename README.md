@@ -35,7 +35,6 @@ npm run dev
 | `/` | 홈 (카테고리 + 글 카드) |
 | `/blog` | 글 목록 (`?cat=corporate\|ai\|culture`) |
 | `/blog/[slug]` | 글 상세 |
-| `/about` | 소개 |
 | `/admin` | 관리자 대시보드 *(헤더에 노출되지 않음, URL 직접 접근)* |
 | `/admin/posts` | 콘텐츠 관리 |
 | `/admin/posts/new` | 새 글 작성 |
@@ -54,7 +53,6 @@ frontend/
 ├── app/                 # App Router 페이지
 │   ├── page.tsx         # 홈
 │   ├── blog/            # 목록 · 상세
-│   ├── about/
 │   └── admin/           # 관리자
 ├── components/          # Header, Footer, CategoryBar, AdminSidebar …
 ├── lib/                 # i18n, theme, categories

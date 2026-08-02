@@ -19,8 +19,7 @@ const dict = {
     "nav.culture": "Org Culture",
     "nav.about": "About",
     "nav.search": "Search posts...",
-    "footer.tagline":
-      "© 2024 Growth Log. Empowering Education through AI. All rights reserved.",
+    "footer.tagline": "Records for a tomorrow better than today.",
     "footer.privacy": "Privacy Policy",
     "footer.terms": "Terms of Service",
     "footer.ethics": "AI Ethics",
@@ -38,6 +37,15 @@ const dict = {
     "cat.all": "All",
     "home.welcome": "Growth Log",
     "home.tagline": "Corporate training, AI, and organizational culture.",
+    "home.introEyebrow": "About me",
+    "home.introTitle":
+      "Records leave growth behind, and growth creates the next change.",
+    "home.introBody1":
+      "I write down the field lessons and missteps found in corporate training, AI, and organizational culture.",
+    "home.introBody2":
+      "I look for methods that outlast trends, and share stories that work in real workplaces.",
+    "home.introCta": "Read the posts",
+    "home.postsTitle": "Latest posts",
     "home.newsletterTitle": "Stay ahead of the curve.",
     "home.newsletterDesc":
       "Get weekly insights on corporate learning, AI, and culture.",
@@ -46,6 +54,7 @@ const dict = {
     "blog.title": "Posts",
     "blog.desc": "Browse articles by category.",
     "blog.readArticle": "Read Article",
+    "blog.back": "Back to list",
     "about.story": "Our Story",
     "about.title":
       "Bridging the gap between AI innovation and classroom reality.",
@@ -60,7 +69,8 @@ const dict = {
     "content.newPost": "+ New Post",
     "content.export": "Export Data",
     "newPost.publish": "Publish",
-    "newPost.draft": "Save Draft",
+    "newPost.preview": "Preview",
+    "newPost.edit": "Edit",
   },
   ko: {
     "nav.home": "홈",
@@ -69,8 +79,7 @@ const dict = {
     "nav.culture": "조직문화",
     "nav.about": "소개",
     "nav.search": "글 검색...",
-    "footer.tagline":
-      "© 2024 Growth Log. AI로 교육을 성장시킵니다. All rights reserved.",
+    "footer.tagline": "오늘보다 더 나은 내일을 위한 기록.",
     "footer.privacy": "개인정보처리방침",
     "footer.terms": "이용약관",
     "footer.ethics": "AI 윤리",
@@ -88,6 +97,15 @@ const dict = {
     "cat.all": "전체",
     "home.welcome": "Growth Log",
     "home.tagline": "기업교육 · AI · 조직문화",
+    "home.introEyebrow": "소개",
+    "home.introTitle":
+      "기록은 성장을 남기고, 성장은 또 다른 변화를 만듭니다.",
+    "home.introBody1":
+      "기업교육, AI, 조직문화 속에서 얻은 실무 경험과 시행착오를 기록합니다.",
+    "home.introBody2":
+      "유행보다 오래 남는 방법을 찾고, 실제 현장에서 통하는 이야기를 나눕니다.",
+    "home.introCta": "글 보러가기",
+    "home.postsTitle": "최근 글",
     "home.newsletterTitle": "앞서가는 인사이트를 받아보세요.",
     "home.newsletterDesc":
       "기업교육, AI, 조직문화에 대한 주간 인사이트를 받아보세요.",
@@ -96,6 +114,7 @@ const dict = {
     "blog.title": "게시글",
     "blog.desc": "카테고리별로 글을 살펴보세요.",
     "blog.readArticle": "글 읽기",
+    "blog.back": "목록으로",
     "about.story": "우리의 이야기",
     "about.title": "AI 혁신과 교실 현실 사이의 간극을 잇습니다.",
     "about.desc":
@@ -109,7 +128,8 @@ const dict = {
     "content.newPost": "+ 새 게시글 작성",
     "content.export": "데이터 내보내기",
     "newPost.publish": "발행하기",
-    "newPost.draft": "임시 저장",
+    "newPost.preview": "미리보기",
+    "newPost.edit": "편집",
   },
 } as const;
 
@@ -119,16 +139,19 @@ type LangCtx = {
   lang: Lang;
   setLang: (l: Lang) => void;
   t: (key: DictKey) => string;
+  mounted: boolean;
 };
 
 const LangContext = createContext<LangCtx | null>(null);
 
 export function LangProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("growth-log-lang") as Lang | null;
     if (saved === "en" || saved === "ko") setLangState(saved);
+    setMounted(true);
   }, []);
 
   const setLang = useCallback((l: Lang) => {
@@ -140,7 +163,7 @@ export function LangProvider({ children }: { children: ReactNode }) {
   const t = useCallback((key: DictKey) => dict[lang][key] ?? dict.en[key], [lang]);
 
   return (
-    <LangContext.Provider value={{ lang, setLang, t }}>
+    <LangContext.Provider value={{ lang, setLang, t, mounted }}>
       {children}
     </LangContext.Provider>
   );
@@ -161,14 +184,14 @@ export function T({ en, ko }: { en: string; ko: string }) {
 export function LangToggle() {
   const { lang, setLang } = useLang();
   return (
-    <div className="flex items-center rounded-full border border-outline-variant/40 bg-surface-container-low p-0.5 text-label-sm font-label-sm">
+    <div className="flex items-center border border-outline-variant text-[11px] uppercase tracking-[0.12em]">
       <button
         type="button"
         onClick={() => setLang("en")}
-        className={`px-3 py-1.5 rounded-full transition-colors cursor-pointer ${
+        className={`px-2.5 py-2 transition-colors cursor-pointer ${
           lang === "en"
-            ? "bg-primary-container text-white"
-            : "text-on-surface-variant hover:text-primary"
+            ? "bg-on-surface text-background font-semibold"
+            : "text-on-surface-variant hover:text-on-surface"
         }`}
       >
         EN
@@ -176,13 +199,13 @@ export function LangToggle() {
       <button
         type="button"
         onClick={() => setLang("ko")}
-        className={`px-3 py-1.5 rounded-full transition-colors cursor-pointer ${
+        className={`px-2.5 py-2 transition-colors cursor-pointer border-l border-outline-variant ${
           lang === "ko"
-            ? "bg-primary-container text-white"
-            : "text-on-surface-variant hover:text-primary"
+            ? "bg-on-surface text-background font-semibold"
+            : "text-on-surface-variant hover:text-on-surface"
         }`}
       >
-        한글
+        KO
       </button>
     </div>
   );

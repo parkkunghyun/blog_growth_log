@@ -1,112 +1,300 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { MarkdownBody } from "@/components/MarkdownBody";
 import { useLang } from "@/lib/i18n";
+import { createClient } from "@/lib/supabase/client";
+import {
+  estimateReadingMinutes,
+  nowLocalInput,
+  toSlug,
+} from "@/lib/post-utils";
+import type { CategoryId } from "@/lib/categories";
 
 export default function NewPostPage() {
   const { t } = useLang();
+  const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<CategoryId | "">("");
+  const [content, setContent] = useState("");
+  const [excerpt, setExcerpt] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [publishAt, setPublishAt] = useState(nowLocalInput);
+  const [preview, setPreview] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const slugPreview = useMemo(() => (title ? toSlug(title) : ""), [title]);
+
+  function onCoverPick(file: File | null) {
+    if (coverPreview) URL.revokeObjectURL(coverPreview);
+    if (!file) {
+      setCoverFile(null);
+      setCoverPreview(null);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setError("이미지 파일만 업로드할 수 있습니다.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("이미지는 5MB 이하만 가능합니다.");
+      return;
+    }
+    setError(null);
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  async function publish() {
+    setError(null);
+    if (!title.trim()) {
+      setError("제목을 입력하세요.");
+      return;
+    }
+    if (!category) {
+      setError("카테고리를 선택하세요.");
+      return;
+    }
+    if (!content.trim()) {
+      setError("본문을 입력하세요.");
+      return;
+    }
+
+    setSaving(true);
+    const supabase = createClient();
+    const slug = toSlug(title);
+    const publishedAt = new Date(publishAt || Date.now()).toISOString();
+
+    let coverImageUrl: string | null = null;
+    if (coverFile) {
+      const ext = coverFile.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("covers")
+        .upload(path, coverFile, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: coverFile.type,
+        });
+      if (uploadError) {
+        setSaving(false);
+        setError(uploadError.message);
+        return;
+      }
+      const { data } = supabase.storage.from("covers").getPublicUrl(path);
+      coverImageUrl = data.publicUrl;
+    }
+
+    const { error: insertError } = await supabase.from("posts").insert({
+      title: title.trim(),
+      slug,
+      excerpt: excerpt.trim() || content.trim().slice(0, 120),
+      content: content.trim(),
+      cover_image_url: coverImageUrl,
+      category,
+      status: "published",
+      author_name: "Growth Log",
+      reading_minutes: estimateReadingMinutes(content),
+      published_at: publishedAt,
+    });
+
+    setSaving(false);
+    if (insertError) {
+      setError(
+        insertError.code === "23505"
+          ? "같은 슬러그의 글이 이미 있습니다. 제목을 바꿔 주세요."
+          : insertError.message
+      );
+      return;
+    }
+
+    router.push("/admin/posts");
+    router.refresh();
+  }
+
   return (
-    <>
-<div className="flex pt-16 min-h-screen bg-background">
-<AdminSidebar />
-<div className="flex-1 overflow-auto">
-<main className="px-5 py-6 max-w-4xl mx-auto">
-<form className="grid grid-cols-1 lg:grid-cols-12 gap-4" id="editor-form">
+    <div className="flex pt-16 min-h-screen bg-background">
+      <AdminSidebar />
+      <div className="flex-1 overflow-auto">
+        <main className="px-5 py-6 max-w-4xl mx-auto">
+          <form
+            className="grid grid-cols-1 lg:grid-cols-12 gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void publish();
+            }}
+          >
+            <div className="lg:col-span-8 space-y-4">
+              <div className="space-y-3">
+                <input
+                  className="w-full bg-transparent border-none focus:ring-0 text-2xl font-bold placeholder:opacity-30 p-0 outline-none"
+                  placeholder="제목을 입력하세요..."
+                  required
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+                {slugPreview ? (
+                  <p className="text-xs text-outline">slug: {slugPreview}</p>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-3">
+                  <select
+                    className="bg-surface-container-low border-outline-variant text-on-surface-variant rounded-lg px-3 py-1.5 text-sm focus:border-secondary transition-all"
+                    value={category}
+                    onChange={(e) =>
+                      setCategory(e.target.value as CategoryId | "")
+                    }
+                    required
+                  >
+                    <option value="">카테고리 선택</option>
+                    <option value="corporate">기업교육</option>
+                    <option value="ai">AI</option>
+                    <option value="culture">조직문화</option>
+                  </select>
+                </div>
+                <input
+                  className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-sm outline-none focus:border-secondary"
+                  placeholder="요약 (비우면 본문 앞부분 사용)"
+                  value={excerpt}
+                  onChange={(e) => setExcerpt(e.target.value)}
+                />
+              </div>
 
-<div className="lg:col-span-8 space-y-4">
+              <div className="border border-outline-variant overflow-hidden">
+                  <div className="border-b border-outline-variant bg-surface-container-low px-3 py-2 flex items-center justify-between gap-2">
+                  <span className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">
+                    Markdown
+                  </span>
+                  <button
+                    type="button"
+                    className={`text-[12px] uppercase tracking-[0.12em] font-semibold px-3 py-1.5 border transition-colors ${
+                      preview
+                        ? "bg-on-surface text-background border-on-surface"
+                        : "border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-on-surface"
+                    }`}
+                    onClick={() => setPreview((v) => !v)}
+                  >
+                    {preview ? t("newPost.edit") : t("newPost.preview")}
+                  </button>
+                </div>
+                <div className="p-4 min-h-80 bg-surface-container-lowest">
+                  {preview ? (
+                    content.trim() ? (
+                      <MarkdownBody content={content} />
+                    ) : (
+                      <p className="text-on-surface-variant/50 text-sm">
+                        미리볼 내용이 없습니다.
+                      </p>
+                    )
+                  ) : (
+                    <textarea
+                      className="w-full min-h-72 resize-y bg-transparent border-none outline-none text-body-md text-on-surface placeholder:text-on-surface-variant/40 font-mono text-sm"
+                      placeholder={
+                        "## 제목\n\n본문을 **마크다운**으로 작성하세요.\n\n- 목록\n- 항목"
+                      }
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      required
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
 
-<div className="space-y-3">
-<input className="w-full bg-transparent border-none focus:ring-0 text-2xl font-bold placeholder:opacity-30 p-0 outline-none" placeholder="제목을 입력하세요..." required type="text"/>
-<div className="flex flex-wrap items-center gap-3">
-<select className="bg-surface-container-low border-outline-variant text-on-surface-variant rounded-lg px-3 py-1.5 text-sm focus:border-secondary transition-all">
-<option value="">카테고리 선택</option>
-<option value="corporate">기업교육</option>
-<option value="ai">AI</option>
-<option value="culture">조직문화</option>
-</select>
-<div className="flex-1 flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-1">
-<span className="material-symbols-outlined text-outline">sell</span>
-<input className="flex-1 bg-transparent border-none focus:ring-0 text-body-md py-1" placeholder="태그 입력 (엔터로 구분)" type="text"/>
-</div>
-</div>
-</div>
+            <div className="lg:col-span-4 space-y-6">
+              <div className="border border-outline-variant p-6 space-y-6">
+                <h4 className="text-[12px] uppercase tracking-[0.14em] font-semibold text-on-surface">
+                  발행 설정
+                </h4>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <span className="block font-body-md text-on-surface-variant">
+                      발행 일정
+                    </span>
+                    <div className="flex items-center gap-2 bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2">
+                      <span className="material-symbols-outlined text-outline text-[20px]">
+                        calendar_today
+                      </span>
+                      <input
+                        className="bg-transparent border-none focus:ring-0 text-label-sm w-full outline-none"
+                        type="datetime-local"
+                        value={publishAt}
+                        onChange={(e) => setPublishAt(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  {error ? (
+                    <p className="text-sm text-error">{error}</p>
+                  ) : null}
+                  <div className="pt-4 border-t border-outline-variant">
+                    <button
+                      className="w-full bg-on-surface text-background py-3 font-semibold text-sm uppercase tracking-[0.12em] hover:opacity-80 transition-opacity disabled:opacity-50"
+                      type="submit"
+                      disabled={saving}
+                    >
+                      {saving ? "…" : t("newPost.publish")}
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-<div className="glass-panel rounded-xl overflow-hidden shadow-sm">
-
-<div className="border-b border-outline-variant bg-surface-container-low p-2 flex flex-wrap gap-1">
-<button className="p-2 hover:bg-surface-variant rounded-lg transition-colors" title="굵게" type="button"><span className="material-symbols-outlined">format_bold</span></button>
-<button className="p-2 hover:bg-surface-variant rounded-lg transition-colors" title="기울임꼴" type="button"><span className="material-symbols-outlined">format_italic</span></button>
-<button className="p-2 hover:bg-surface-variant rounded-lg transition-colors" title="제목 1" type="button"><span className="material-symbols-outlined">title</span></button>
-<div className="w-px h-6 bg-outline-variant mx-1 my-auto"></div>
-<button className="p-2 hover:bg-surface-variant rounded-lg transition-colors" title="목록" type="button"><span className="material-symbols-outlined">format_list_bulleted</span></button>
-<button className="p-2 hover:bg-surface-variant rounded-lg transition-colors" title="숫자 목록" type="button"><span className="material-symbols-outlined">format_list_numbered</span></button>
-<button className="p-2 hover:bg-surface-variant rounded-lg transition-colors" title="인용구" type="button"><span className="material-symbols-outlined">format_quote</span></button>
-<div className="w-px h-6 bg-outline-variant mx-1 my-auto"></div>
-<button className="p-2 hover:bg-surface-variant rounded-lg transition-colors" title="이미지 삽입" type="button"><span className="material-symbols-outlined">image</span></button>
-<button className="p-2 hover:bg-surface-variant rounded-lg transition-colors" title="코드 블록" type="button"><span className="material-symbols-outlined">code</span></button>
-<button className="p-2 hover:bg-surface-variant rounded-lg transition-colors" title="링크" type="button"><span className="material-symbols-outlined">link</span></button>
-<div className="flex-1"></div>
-<button className="flex items-center gap-2 px-3 py-1 bg-secondary-fixed text-on-secondary-fixed rounded-lg text-label-sm font-bold hover:brightness-95 transition-all" type="button">
-<span className="material-symbols-outlined text-[18px]">psychology</span>
-                            AI 초안 생성
-                        </button>
-</div>
-
-<div
-  className="p-4 min-h-[320px] bg-surface-container-lowest rounded-b-xl"
->
-  <textarea
-    className="w-full min-h-[288px] resize-y bg-transparent border-none outline-none text-body-md text-on-surface placeholder:text-on-surface-variant/40"
-    placeholder="이곳에 교육적인 통찰력을 담아내세요..."
-  />
-</div>
-</div>
-</div>
-
-<div className="lg:col-span-4 space-y-6">
-<div className="sidebar-sticky space-y-6">
-
-<div className="glass-panel rounded-xl p-6 shadow-sm space-y-6">
-<h4 className="font-headline-md text-[18px] text-primary">발행 설정</h4>
-<div className="space-y-4">
-<label className="flex items-center justify-between cursor-pointer group">
-<span className="font-body-md text-on-surface-variant">공개 여부</span>
-<div className="relative inline-flex items-center">
-<input defaultChecked className="sr-only peer" type="checkbox"/>
-<div className="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
-</div>
-</label>
-<div className="space-y-2">
-<span className="block font-body-md text-on-surface-variant">발행 일정</span>
-<div className="flex items-center gap-2 bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2">
-<span className="material-symbols-outlined text-outline text-[20px]">calendar_today</span>
-<input className="bg-transparent border-none focus:ring-0 text-label-sm w-full outline-none" type="datetime-local" defaultValue="2024-11-20T14:00"/>
-</div>
-</div>
-<div className="pt-4 border-t border-outline-variant flex flex-col gap-3">
-<button className="w-full bg-primary text-on-primary py-3 rounded-xl font-bold hover:shadow-lg transition-all active:scale-[0.98]" type="submit">{t("newPost.publish")}</button>
-<button className="w-full bg-surface-container text-on-surface-variant py-3 rounded-xl font-bold hover:bg-surface-variant transition-all" type="button">{t("newPost.draft")}</button>
-</div>
-</div>
-</div>
-
-<div className="glass-panel rounded-xl p-6 shadow-sm space-y-4">
-<h4 className="font-headline-md text-[18px] text-primary">대표 이미지 (썸네일)</h4>
-<div className="relative group cursor-pointer aspect-video rounded-lg overflow-hidden border-2 border-dashed border-outline-variant hover:border-secondary transition-colors flex flex-col items-center justify-center bg-surface-container-low">
-<div className="absolute inset-0 bg-cover bg-center opacity-40 group-hover:opacity-60 transition-opacity" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAUXIhB300IxSupM2OIEQji1YdGaiEFDjZ-gNRllkPXYdWjDMhrI5P890GYEycJDwdTAkOejksE0WOw9ECqaBEfRkxl6Nz--iFPjYdU9e6WbjYgWuXEcO6tRcCHa3gAwxogRBbEOQv8c-qZDM3F0jXIYa-dvQKy1ud8TBqcQhEB9IyW317R_WdNO_ZzBHi9JNwydmRHj6o3CGnUKGH8gC1FS7noI687pOEwRdlR7E_kHxeNUGkSWC7gJA')"}}></div>
-<div className="relative z-10 flex flex-col items-center pointer-events-none">
-<span className="material-symbols-outlined text-4xl text-secondary mb-2">upload_file</span>
-<span className="font-label-sm text-on-surface-variant">이미지 업로드 또는 드래그</span>
-</div>
-</div>
-<p className="font-label-sm text-outline-variant text-center">권장 사이즈: 1200 x 630px (16:9)</p>
-</div>
-</div>
-</div>
-</form>
-</main>
-</div>
-</div>
-    </>
+              <div className="border border-outline-variant p-6 space-y-4">
+                <h4 className="text-[12px] uppercase tracking-[0.14em] font-semibold text-on-surface">
+                  대표 이미지 (썸네일)
+                </h4>
+                <label className="relative group cursor-pointer aspect-video overflow-hidden border border-dashed border-outline-variant hover:border-on-surface transition-colors flex flex-col items-center justify-center bg-surface-container-low">
+                  {coverPreview ? (
+                    <img
+                      src={coverPreview}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : null}
+                  <div
+                    className={`relative z-10 flex flex-col items-center pointer-events-none ${
+                      coverPreview ? "opacity-0 group-hover:opacity-100" : ""
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-4xl text-on-surface mb-2">
+                      upload_file
+                    </span>
+                    <span className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant bg-background/80 px-2 py-1">
+                      {coverPreview
+                        ? "다른 이미지 선택"
+                        : "이미지 업로드 또는 클릭"}
+                    </span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="sr-only"
+                    onChange={(e) =>
+                      onCoverPick(e.target.files?.[0] ?? null)
+                    }
+                  />
+                </label>
+                {coverFile ? (
+                  <button
+                    type="button"
+                    className="w-full text-sm text-on-surface-variant hover:text-error"
+                    onClick={() => onCoverPick(null)}
+                  >
+                    이미지 제거
+                  </button>
+                ) : (
+                  <p className="font-label-sm text-outline-variant text-center">
+                    JPG/PNG/WebP · 최대 5MB · 없으면 기본 이미지
+                  </p>
+                )}
+              </div>
+            </div>
+          </form>
+        </main>
+      </div>
+    </div>
   );
 }

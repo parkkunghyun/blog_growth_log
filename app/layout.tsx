@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Noto_Sans_KR, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { ThemeInitScript } from "@/components/ThemeInitScript";
 import { LangProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
 
-const inter = Inter({
-  variable: "--font-inter",
+const display = Noto_Sans_KR({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const jetbrains = JetBrains_Mono({
-  variable: "--font-jetbrains",
+const mono = JetBrains_Mono({
+  variable: "--font-mono-body",
   subsets: ["latin"],
   weight: ["500"],
 });
@@ -35,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrains.variable} h-full antialiased`}
+      className={`${display.variable} ${mono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
@@ -47,13 +48,9 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://cdn-uicons.flaticon.com/2.6.0/uicons-solid-rounded/css/uicons-solid-rounded.css"
         />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('growth-log-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()`,
-          }}
-        />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-on-surface selection:bg-secondary-container selection:text-on-secondary-container">
+      <body className="min-h-full flex flex-col bg-background text-on-surface selection:bg-on-surface selection:text-background">
+        <ThemeInitScript />
         <ThemeProvider>
           <LangProvider>
             <Header />

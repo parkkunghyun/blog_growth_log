@@ -14,23 +14,28 @@ export type Theme = "light" | "dark";
 type ThemeCtx = {
   theme: Theme;
   toggleTheme: () => void;
+  mounted: boolean;
 };
 
 const ThemeContext = createContext<ThemeCtx | null>(null);
 
+function readTheme(): Theme {
+  const saved = localStorage.getItem("growth-log-theme") as Theme | null;
+  if (saved === "dark" || saved === "light") return saved;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("growth-log-theme") as Theme | null;
-    const initial =
-      saved === "dark" || saved === "light"
-        ? saved
-        : window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
+    const initial = readTheme();
     setTheme(initial);
     document.documentElement.classList.toggle("dark", initial === "dark");
+    setMounted(true);
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -43,7 +48,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, mounted }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -56,16 +61,19 @@ export function useTheme() {
 }
 
 export function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, mounted } = useTheme();
+  const isLight = !mounted || theme === "light";
+
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-      className="w-9 h-9 rounded-full border border-outline-variant/40 bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
+      aria-label={isLight ? "Switch to dark mode" : "Switch to light mode"}
+      className="w-9 h-9 border border-outline-variant bg-background flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+      suppressHydrationWarning
     >
-      <span className="material-symbols-outlined text-[20px]">
-        {theme === "light" ? "dark_mode" : "light_mode"}
+      <span className="material-symbols-outlined text-[20px]" suppressHydrationWarning>
+        {isLight ? "dark_mode" : "light_mode"}
       </span>
     </button>
   );

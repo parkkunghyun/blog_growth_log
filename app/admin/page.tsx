@@ -1,109 +1,88 @@
-"use client";
-
 import Link from "next/link";
 import { AdminSidebar } from "@/components/AdminSidebar";
-import { useLang } from "@/lib/i18n";
+import { getAllPosts } from "@/lib/posts-server";
+import { formatDate } from "@/lib/posts";
 
-export default function AdminDashboard() {
-  const { t } = useLang();
+export default async function AdminDashboard() {
+  const posts = await getAllPosts();
+  const published = posts.filter((p) => p.status === "published").length;
+  const drafts = posts.length - published;
+  const recent = posts.slice(0, 5);
+
   return (
     <div className="flex pt-16 min-h-screen bg-background">
       <AdminSidebar />
-      <main className="flex-1 px-5 py-6 overflow-auto">
-        <div className="max-w-4xl mx-auto space-y-5">
-          <header className="flex items-center justify-between gap-3">
+      <main className="flex-1 px-5 md:px-8 py-8 overflow-auto">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <header className="flex items-end justify-between gap-3 border-b border-outline-variant pb-6">
             <div>
-              <h1 className="text-xl font-bold text-on-surface">
-                {t("adminDash.title")}
-              </h1>
-              <p className="text-sm text-on-surface-variant">
-                {t("adminDash.subtitle")}
+              <p className="text-[11px] uppercase tracking-[0.14em] text-on-surface-variant mb-2">
+                Overview
               </p>
+              <h1 className="text-2xl font-bold tracking-tight text-on-surface">
+                Dashboard
+              </h1>
             </div>
             <Link
               href="/admin/posts/new"
-              className="text-sm font-medium bg-primary text-on-primary px-3 py-1.5 rounded-lg hover:opacity-90"
+              className="text-sm font-medium border border-on-surface text-on-surface px-4 py-2 hover:bg-on-surface hover:text-background transition-colors"
             >
-              {t("content.newPost")}
+              + New post
             </Link>
           </header>
 
-          <section className="grid grid-cols-3 gap-3">
+          <section className="grid grid-cols-3 gap-px bg-outline-variant border border-outline-variant">
             {[
-              { label: "총 방문자", value: "12,482", delta: "+5.2%" },
-              { label: "게시글", value: "158", delta: "+2" },
-              { label: "댓글", value: "1,240", delta: "-1.5%" },
+              { label: "All posts", value: String(posts.length) },
+              { label: "Published", value: String(published) },
+              { label: "Drafts", value: String(drafts) },
             ].map((s) => (
-              <div
-                key={s.label}
-                className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/20"
-              >
-                <p className="text-xs text-on-surface-variant mb-1">{s.label}</p>
-                <p className="text-2xl font-bold text-on-surface">{s.value}</p>
-                <p className="text-xs text-secondary mt-1">{s.delta}</p>
+              <div key={s.label} className="bg-background p-5">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant mb-2">
+                  {s.label}
+                </p>
+                <p className="text-3xl font-bold text-on-surface tracking-tight">
+                  {s.value}
+                </p>
               </div>
             ))}
           </section>
 
-          <section className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            <div className="lg:col-span-3 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/20">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold">블로그 활동 추이</h2>
-                <div className="flex gap-1 text-xs">
-                  <span className="px-2 py-0.5 bg-surface-container-highest rounded">
-                    7일
-                  </span>
-                  <span className="px-2 py-0.5 text-on-surface-variant rounded">
-                    30일
-                  </span>
-                </div>
-              </div>
-              <div className="h-36 flex items-end justify-between gap-1.5">
-                {[50, 33, 60, 25, 66, 80, 50].map((h, i) => (
-                  <div
-                    key={i}
-                    className="w-full bg-secondary/15 rounded-t relative"
-                    style={{ height: `${h + 20}%` }}
-                  >
-                    <div
-                      className="absolute inset-x-0 bottom-0 bg-secondary rounded-t"
-                      style={{ height: `${h}%` }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between mt-2 text-[10px] text-outline">
-                <span>월</span>
-                <span>화</span>
-                <span>수</span>
-                <span>목</span>
-                <span>금</span>
-                <span>토</span>
-                <span>일</span>
-              </div>
+          <section className="border border-outline-variant">
+            <div className="px-5 py-4 border-b border-outline-variant">
+              <h2 className="text-[12px] uppercase tracking-[0.14em] font-semibold text-on-surface">
+                Recent posts
+              </h2>
             </div>
-
-            <div className="lg:col-span-2 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/20">
-              <h2 className="text-sm font-semibold mb-3">최근 작성된 글</h2>
-              <ul className="space-y-3">
-                {[
-                  { title: "AI와 교육의 미래", meta: "2시간 전" },
-                  { title: "2024 에듀테크 툴", meta: "5시간 전" },
-                  { title: "LLM 튜닝 가이드", meta: "어제" },
-                ].map((p) => (
-                  <li key={p.title} className="flex justify-between gap-2 text-sm">
-                    <span className="font-medium line-clamp-1">{p.title}</span>
-                    <span className="text-xs text-outline shrink-0">{p.meta}</span>
+            {recent.length === 0 ? (
+              <p className="px-5 py-8 text-sm text-on-surface-variant">
+                아직 글이 없습니다.
+              </p>
+            ) : (
+              <ul>
+                {recent.map((p, i) => (
+                  <li
+                    key={p.id}
+                    className={`flex justify-between gap-3 px-5 py-4 text-sm ${
+                      i < recent.length - 1 ? "border-b border-outline-variant" : ""
+                    }`}
+                  >
+                    <span className="font-medium text-on-surface line-clamp-1">
+                      {p.title}
+                    </span>
+                    <span className="text-xs text-on-surface-variant shrink-0 uppercase tracking-wide">
+                      {formatDate(p.published_at ?? p.created_at)}
+                    </span>
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/admin/posts"
-                className="block mt-4 text-center text-xs font-medium text-secondary border border-secondary/40 rounded-lg py-2 hover:bg-secondary/5"
-              >
-                전체 목록 보기
-              </Link>
-            </div>
+            )}
+            <Link
+              href="/admin/posts"
+              className="block text-center text-xs uppercase tracking-[0.14em] font-medium text-on-surface border-t border-outline-variant py-3.5 hover:bg-surface-container-low transition-colors"
+            >
+              View all
+            </Link>
           </section>
         </div>
       </main>
