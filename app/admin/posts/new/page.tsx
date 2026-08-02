@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { MarkdownBody } from "@/components/MarkdownBody";
@@ -16,6 +16,8 @@ import type { CategoryId } from "@/lib/categories";
 export default function NewPostPage() {
   const { t } = useLang();
   const router = useRouter();
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const bodyImageInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<CategoryId | "">("");
   const [content, setContent] = useState("");
@@ -25,9 +27,22 @@ export default function NewPostPage() {
   const [publishAt, setPublishAt] = useState(nowLocalInput);
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingBodyImage, setUploadingBodyImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const slugPreview = useMemo(() => (title ? toSlug(title) : ""), [title]);
+
+  function validateImage(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setError("이미지 파일만 업로드할 수 있습니다.");
+      return false;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("이미지는 5MB 이하만 가능합니다.");
+      return false;
+    }
+    return true;
+  }
 
   function onCoverPick(file: File | null) {
     if (coverPreview) URL.revokeObjectURL(coverPreview);
@@ -36,17 +51,61 @@ export default function NewPostPage() {
       setCoverPreview(null);
       return;
     }
-    if (!file.type.startsWith("image/")) {
-      setError("이미지 파일만 업로드할 수 있습니다.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("이미지는 5MB 이하만 가능합니다.");
-      return;
-    }
+    if (!validateImage(file)) return;
     setError(null);
     setCoverFile(file);
     setCoverPreview(URL.createObjectURL(file));
+  }
+
+  function insertAtCursor(snippet: string) {
+    const el = contentRef.current;
+    if (!el) {
+      setContent(
+        (prev) => `${prev}${prev && !prev.endsWith("\n") ? "\n" : ""}${snippet}`
+      );
+      return;
+    }
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const next = `${content.slice(0, start)}${snippet}${content.slice(end)}`;
+    setContent(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + snippet.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
+  async function uploadImage(file: File, folder: string) {
+    const supabase = createClient();
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("covers")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+    if (uploadError) throw new Error(uploadError.message);
+    return supabase.storage.from("covers").getPublicUrl(path).data.publicUrl;
+  }
+
+  async function onBodyImagePick(file: File | null) {
+    if (!file) return;
+    if (!validateImage(file)) return;
+    setError(null);
+    setUploadingBodyImage(true);
+    try {
+      const url = await uploadImage(file, "content");
+      insertAtCursor(`\n![이미지](${url})\n`);
+      setPreview(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.");
+    } finally {
+      setUploadingBodyImage(false);
+      if (bodyImageInputRef.current) bodyImageInputRef.current.value = "";
+    }
   }
 
   async function publish() {
@@ -70,23 +129,14 @@ export default function NewPostPage() {
     const publishedAt = new Date(publishAt || Date.now()).toISOString();
 
     let coverImageUrl: string | null = null;
-    if (coverFile) {
-      const ext = coverFile.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("covers")
-        .upload(path, coverFile, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: coverFile.type,
-        });
-      if (uploadError) {
-        setSaving(false);
-        setError(uploadError.message);
-        return;
+    try {
+      if (coverFile) {
+        coverImageUrl = await uploadImage(coverFile, "covers");
       }
-      const { data } = supabase.storage.from("covers").getPublicUrl(path);
-      coverImageUrl = data.publicUrl;
+    } catch (e) {
+      setSaving(false);
+      setError(e instanceof Error ? e.message : "썸네일 업로드에 실패했습니다.");
+      return;
     }
 
     const { error: insertError } = await supabase.from("posts").insert({
@@ -165,10 +215,33 @@ export default function NewPostPage() {
               </div>
 
               <div className="border border-outline-variant overflow-hidden">
-                  <div className="border-b border-outline-variant bg-surface-container-low px-3 py-2 flex items-center justify-between gap-2">
-                  <span className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">
-                    Markdown
-                  </span>
+                <div className="border-b border-outline-variant bg-surface-container-low px-3 py-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">
+                      Markdown
+                    </span>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-[12px] px-2.5 py-1.5 border border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-on-surface transition-colors disabled:opacity-50"
+                      disabled={uploadingBodyImage || preview}
+                      onClick={() => bodyImageInputRef.current?.click()}
+                      title="본문에 이미지 삽입"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        image
+                      </span>
+                      {uploadingBodyImage ? "업로드 중…" : "이미지"}
+                    </button>
+                    <input
+                      ref={bodyImageInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="sr-only"
+                      onChange={(e) =>
+                        void onBodyImagePick(e.target.files?.[0] ?? null)
+                      }
+                    />
+                  </div>
                   <button
                     type="button"
                     className={`text-[12px] uppercase tracking-[0.12em] font-semibold px-3 py-1.5 border transition-colors ${
@@ -192,9 +265,10 @@ export default function NewPostPage() {
                     )
                   ) : (
                     <textarea
+                      ref={contentRef}
                       className="w-full min-h-72 resize-y bg-transparent border-none outline-none text-body-md text-on-surface placeholder:text-on-surface-variant/40 font-mono text-sm"
                       placeholder={
-                        "## 제목\n\n본문을 **마크다운**으로 작성하세요.\n\n- 목록\n- 항목"
+                        "## 제목\n\n본문을 **마크다운**으로 작성하세요.\n\n툴바의 이미지 버튼으로 사진을 넣을 수 있습니다."
                       }
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
@@ -234,7 +308,7 @@ export default function NewPostPage() {
                     <button
                       className="w-full bg-on-surface text-background py-3 font-semibold text-sm uppercase tracking-[0.12em] hover:opacity-80 transition-opacity disabled:opacity-50"
                       type="submit"
-                      disabled={saving}
+                      disabled={saving || uploadingBodyImage}
                     >
                       {saving ? "…" : t("newPost.publish")}
                     </button>
