@@ -1,70 +1,42 @@
 # Growth Log
 
-기업교육 · AI · 조직문화를 다루는 AI 교육 블로그 프론트엔드입니다.  
-UI는 Google Stitch 디자인(Growth Log)을 기반으로 Next.js로 구성했습니다.
+기업교육 · AI · 조직문화에 대한 실무 기록을 남기는 블로그입니다.
 
-## Stack
+> 오늘보다 더 나은 내일을 위한 기록.
 
-- **Next.js** 16 (App Router)
-- **React** 19
-- **TypeScript**
-- **Tailwind CSS** 4
-- Flaticon Uicons (`fi-sr-chart-line-up`)
+---
 
-## Getting Started
+## 무엇을 할 수 있나요
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### 방문객
+- 홈에서 Growth Log 소개와 최근 글을 볼 수 있습니다
+- 카테고리별로 글을 모아 볼 수 있습니다 (기업교육 / AI / 조직문화)
+- 글 본문이 읽기 좋게 표시됩니다
+- **한글 / 영어** 전환이 가능합니다
+- **라이트 / 다크** 모드를 고를 수 있습니다
 
-브라우저에서 [http://localhost:3000](http://localhost:3000) 을 엽니다.
+### 관리자
+- 새 글을 작성하고 발행할 수 있습니다
+- 대표 이미지를 업로드할 수 있습니다
+- 미리보기로 발행 전 모습을 확인할 수 있습니다
+- 글 목록을 보고 삭제할 수 있습니다
+- 관리 화면은 메뉴에 노출되지 않으며, 주소로만 들어갑니다  
+  (추후 Google 로그인 연동 예정)
 
-| 명령 | 설명 |
+
+## 화면 구성
+
+| 화면 | 설명 |
 |------|------|
-| `npm run dev` | 개발 서버 |
-| `npm run build` | 프로덕션 빌드 |
-| `npm run start` | 빌드 결과 실행 |
-| `npm run lint` | ESLint |
+| 홈 | 소개 + 최근 글 |
+| 글 목록 | 카테고리 필터 |
+| 글 상세 | 본문 · 썸네일 |
+| 관리자 | 대시보드 · 글 관리 · 새 글 작성 |
 
-## Routes
+---
 
-| 경로 | 설명 |
-|------|------|
-| `/` | 홈 (카테고리 + 글 카드) |
-| `/blog` | 글 목록 (`?cat=corporate\|ai\|culture`) |
-| `/blog/[slug]` | 글 상세 |
-| `/admin` | 관리자 대시보드 *(헤더에 노출되지 않음, URL 직접 접근)* |
-| `/admin/posts` | 콘텐츠 관리 |
-| `/admin/posts/new` | 새 글 작성 |
+## 소개 문구
 
-## Features
-
-- **카테고리**: 기업교육 / AI / 조직문화
-- **한·영 전환**: 헤더 `EN | 한글` (localStorage 저장)
-- **다크/라이트 모드**: 헤더 토글 (localStorage + `prefers-color-scheme`)
-- **관리자 UI**: 대시보드 · 글 목록 · 작성 화면 (목업, DB 연동 없음)
-
-## Project Structure
-
-```
-frontend/
-├── app/                 # App Router 페이지
-│   ├── page.tsx         # 홈
-│   ├── blog/            # 목록 · 상세
-│   └── admin/           # 관리자
-├── components/          # Header, Footer, CategoryBar, AdminSidebar …
-├── lib/                 # i18n, theme, categories
-└── public/              # favicon.svg, logo.svg, 이미지 자산
-```
-
-## Notes
-
-- 현재는 **UI 목업**입니다. DB·API·인증은 아직 없습니다.
-- 관리자 진입은 추후 **Google 로그인**으로 연결할 예정입니다.
-- 관리자 화면은 내비에 숨겨 두었으며 `/admin`으로만 접근합니다.
-
-## License
-
-Private project.
+기록은 성장을 남기고, 성장은 또 다른 변화를 만듭니다.  
+기업교육, AI, 조직문화 속에서 얻은 실무 경험과 시행착오를 기록합니다.  
+유행보다 오래 남는 방법을 찾고, 실제 현장에서 통하는 이야기를 나눕니다.
