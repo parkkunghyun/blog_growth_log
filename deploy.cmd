@@ -1,15 +1,15 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-REM Growth Log → Cloud Run (ax-project2026 / asia-northeast3)
-REM frontend 폴더에서 실행: deploy.cmd
-REM .env.local 은 git/Docker 에 포함되지 않습니다. GEMINI_API_KEY 는 빌드 후
-REM Cloud Run 런타임 env 로만 주입합니다 (이미지·저장소에 들어가지 않음).
+REM Growth Log -> Cloud Run (ax-project2026 / asia-northeast3)
+REM Run from frontend folder: deploy.cmd
+REM .env.local is gitignored and dockerignored.
+REM GEMINI_API_KEY is injected as Cloud Run runtime env only (not baked into image).
 
 cd /d "%~dp0"
 
 if not exist ".env.local" (
-  echo .env.local 이 없습니다.
+  echo ERROR: .env.local not found.
   exit /b 1
 )
 
@@ -20,15 +20,15 @@ for /f "usebackq tokens=1,* delims==" %%A in (".env.local") do (
 )
 
 if "%NEXT_PUBLIC_SUPABASE_URL%"=="" (
-  echo NEXT_PUBLIC_SUPABASE_URL 이 비어 있습니다.
+  echo ERROR: NEXT_PUBLIC_SUPABASE_URL is empty.
   exit /b 1
 )
 if "%NEXT_PUBLIC_SUPABASE_ANON_KEY%"=="" (
-  echo NEXT_PUBLIC_SUPABASE_ANON_KEY 이 비어 있습니다.
+  echo ERROR: NEXT_PUBLIC_SUPABASE_ANON_KEY is empty.
   exit /b 1
 )
 if "%GEMINI_API_KEY%"=="" (
-  echo GEMINI_API_KEY 이 비어 있습니다. .env.local 에 추가하세요.
+  echo ERROR: GEMINI_API_KEY is empty. Add it to .env.local.
   exit /b 1
 )
 

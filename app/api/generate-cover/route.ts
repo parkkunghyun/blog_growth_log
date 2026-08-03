@@ -103,7 +103,9 @@ export async function POST(req: Request) {
       if (!b64) continue;
 
       const mimeType =
-        inline?.mimeType ?? inline?.mime_type ?? "image/png";
+        (inline && "mimeType" in inline ? inline.mimeType : undefined) ??
+        (inline && "mime_type" in inline ? inline.mime_type : undefined) ??
+        "image/png";
 
       return NextResponse.json({
         mimeType,
