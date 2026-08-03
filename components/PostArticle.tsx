@@ -21,7 +21,7 @@ export function PostArticle({ post }: { post: Post }) {
 
   return (
     <article className="max-w-[760px] mx-auto px-margin-mobile">
-      <header className="mb-10">
+      <header className="mb-8">
         <p className="text-[12px] uppercase tracking-[0.14em] text-on-surface-variant mb-5">
           {date}
           <span className="mx-2 text-outline">|</span>
@@ -33,17 +33,14 @@ export function PostArticle({ post }: { post: Post }) {
           {p.title}
         </h1>
         {p.excerpt ? (
-          <p className="text-[17px] text-on-surface-variant mb-6 leading-relaxed">
+          <p className="text-[17px] text-on-surface-variant mb-0 leading-relaxed">
             {p.excerpt}
           </p>
         ) : null}
-        <div className="flex items-center gap-3 border-y border-outline-variant py-4 text-sm text-on-surface">
-          <span className="font-semibold">{p.author_name ?? "Growth Log"}</span>
-        </div>
       </header>
 
-      <figure className="mb-12">
-        <div className="aspect-[16/10] w-full overflow-hidden bg-surface-container">
+      <figure className="mb-10">
+        <div className="aspect-[16/9] max-w-[520px] mx-auto overflow-hidden bg-surface-container">
           <img src={cover} alt="" className="w-full h-full object-cover" />
         </div>
       </figure>

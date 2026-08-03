@@ -3,6 +3,17 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+const IMG_SIZE: Record<string, string> = {
+  sm: "max-w-[240px] md:max-w-[280px] w-full",
+  md: "max-w-[400px] md:max-w-[480px] w-full",
+  lg: "max-w-full w-full",
+};
+
+function imgSizeClass(title?: string | null) {
+  if (title === "sm" || title === "md" || title === "lg") return IMG_SIZE[title];
+  return IMG_SIZE.lg;
+}
+
 export function MarkdownBody({ content }: { content: string }) {
   return (
     <div className="markdown-body text-[17px] leading-relaxed text-on-surface-variant">
@@ -24,12 +35,18 @@ export function MarkdownBody({ content }: { content: string }) {
               {children}
             </h3>
           ),
-          p: ({ children }) => <p className="mb-4 last:mb-0 text-on-surface-variant">{children}</p>,
+          p: ({ children }) => (
+            <p className="mb-4 last:mb-0 text-on-surface-variant">{children}</p>
+          ),
           ul: ({ children }) => (
-            <ul className="list-disc pl-6 mb-4 space-y-1 text-on-surface-variant">{children}</ul>
+            <ul className="list-disc pl-6 mb-4 space-y-1 text-on-surface-variant">
+              {children}
+            </ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal pl-6 mb-4 space-y-1 text-on-surface-variant">{children}</ol>
+            <ol className="list-decimal pl-6 mb-4 space-y-1 text-on-surface-variant">
+              {children}
+            </ol>
           ),
           li: ({ children }) => <li className="leading-relaxed">{children}</li>,
           strong: ({ children }) => (
@@ -68,11 +85,11 @@ export function MarkdownBody({ content }: { content: string }) {
           },
           pre: ({ children }) => <>{children}</>,
           hr: () => <hr className="my-8 border-outline-variant" />,
-          img: ({ src, alt }) => (
+          img: ({ src, alt, title }) => (
             <img
               src={src}
               alt={alt ?? ""}
-              className="my-4 max-w-full"
+              className={`my-4 mx-auto block ${imgSizeClass(title)}`}
             />
           ),
           table: ({ children }) => (

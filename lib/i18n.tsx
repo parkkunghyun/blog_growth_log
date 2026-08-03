@@ -146,12 +146,12 @@ const LangContext = createContext<LangCtx | null>(null);
 
 export function LangProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("growth-log-lang") as Lang | null;
-    if (saved === "en" || saved === "ko") setLangState(saved);
-    setMounted(true);
+    if (saved !== "en" && saved !== "ko") return;
+    setLangState(saved);
+    document.documentElement.lang = saved === "ko" ? "ko" : "en";
   }, []);
 
   const setLang = useCallback((l: Lang) => {
@@ -160,10 +160,13 @@ export function LangProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = l === "ko" ? "ko" : "en";
   }, []);
 
-  const t = useCallback((key: DictKey) => dict[lang][key] ?? dict.en[key], [lang]);
+  const t = useCallback(
+    (key: DictKey) => dict[lang][key] ?? dict.en[key],
+    [lang]
+  );
 
   return (
-    <LangContext.Provider value={{ lang, setLang, t, mounted }}>
+    <LangContext.Provider value={{ lang, setLang, t, mounted: true }}>
       {children}
     </LangContext.Provider>
   );
@@ -183,27 +186,40 @@ export function T({ en, ko }: { en: string; ko: string }) {
 
 export function LangToggle() {
   const { lang, setLang } = useLang();
+
   return (
-    <div className="flex items-center border border-outline-variant text-[11px] uppercase tracking-[0.12em]">
+    <div
+      className="inline-flex items-center gap-0.5 text-[11px] uppercase tracking-[0.12em]"
+      role="group"
+      aria-label="Language"
+      suppressHydrationWarning
+    >
       <button
         type="button"
         onClick={() => setLang("en")}
-        className={`px-2.5 py-2 transition-colors cursor-pointer ${
+        aria-pressed={lang === "en"}
+        className={`appearance-none bg-transparent px-2 py-1.5 cursor-pointer outline-none ${
           lang === "en"
-            ? "bg-on-surface text-background font-semibold"
+            ? "text-on-surface font-semibold underline underline-offset-4"
             : "text-on-surface-variant hover:text-on-surface"
         }`}
+        suppressHydrationWarning
       >
         EN
       </button>
+      <span className="text-outline-variant select-none" aria-hidden>
+        /
+      </span>
       <button
         type="button"
         onClick={() => setLang("ko")}
-        className={`px-2.5 py-2 transition-colors cursor-pointer border-l border-outline-variant ${
+        aria-pressed={lang === "ko"}
+        className={`appearance-none bg-transparent px-2 py-1.5 cursor-pointer outline-none ${
           lang === "ko"
-            ? "bg-on-surface text-background font-semibold"
+            ? "text-on-surface font-semibold underline underline-offset-4"
             : "text-on-surface-variant hover:text-on-surface"
         }`}
+        suppressHydrationWarning
       >
         KO
       </button>

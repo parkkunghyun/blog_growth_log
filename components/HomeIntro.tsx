@@ -22,14 +22,14 @@ export function HomeIntro() {
 
       <div className="lg:col-span-6 order-1 lg:order-2 flex justify-end items-center min-w-0">
         <img
-          src="/keyboard.png"
+          src="/kb-light.png"
           alt=""
           className="w-[72%] max-w-[340px] md:max-w-[380px] h-auto object-contain object-right block dark:hidden"
         />
         <img
-          src="/keyboard_black.png"
+          src="/kb2.png"
           alt=""
-          className="w-[72%] max-w-[340px] md:max-w-[380px] h-auto object-contain object-right hidden dark:block"
+          className="w-[68%] max-w-[320px] md:max-w-[355px] h-auto object-contain object-right hidden dark:block"
         />
       </div>
     </section>

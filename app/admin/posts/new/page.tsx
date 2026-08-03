@@ -13,6 +13,11 @@ import {
 } from "@/lib/post-utils";
 import type { CategoryId } from "@/lib/categories";
 
+type ImgSize = "sm" | "md" | "lg";
+
+const TOOLBAR_BTN =
+  "inline-flex items-center justify-center min-w-8 h-8 px-2 text-[13px] font-semibold border border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-on-surface transition-colors disabled:opacity-50";
+
 export default function NewPostPage() {
   const { t } = useLang();
   const router = useRouter();
@@ -28,6 +33,8 @@ export default function NewPostPage() {
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingBodyImage, setUploadingBodyImage] = useState(false);
+  const [bodyImgSize, setBodyImgSize] = useState<ImgSize>("md");
+  const [generatingCover, setGeneratingCover] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const slugPreview = useMemo(() => (title ? toSlug(title) : ""), [title]);
@@ -57,6 +64,48 @@ export default function NewPostPage() {
     setCoverPreview(URL.createObjectURL(file));
   }
 
+  async function generateCoverWithAi() {
+    if (!title.trim()) {
+      setError("AI 썸네일 생성을 위해 제목을 먼저 입력하세요.");
+      return;
+    }
+    setError(null);
+    setGeneratingCover(true);
+    try {
+      const res = await fetch("/api/generate-cover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          category: category || undefined,
+          excerpt: excerpt.trim() || undefined,
+        }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        mimeType?: string;
+        base64?: string;
+      };
+      if (!res.ok || !data.base64) {
+        throw new Error(data.error || "썸네일 생성에 실패했습니다.");
+      }
+
+      const mime = data.mimeType || "image/png";
+      const binary = atob(data.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      const ext = mime.includes("jpeg") || mime.includes("jpg") ? "jpg" : "png";
+      const file = new File([bytes], `ai-cover-${Date.now()}.${ext}`, {
+        type: mime,
+      });
+      onCoverPick(file);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "썸네일 생성에 실패했습니다.");
+    } finally {
+      setGeneratingCover(false);
+    }
+  }
+
   function insertAtCursor(snippet: string) {
     const el = contentRef.current;
     if (!el) {
@@ -72,6 +121,49 @@ export default function NewPostPage() {
     requestAnimationFrame(() => {
       el.focus();
       const pos = start + snippet.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
+  function wrapSelection(before: string, after: string, placeholder: string) {
+    const el = contentRef.current;
+    if (!el) {
+      insertAtCursor(`${before}${placeholder}${after}`);
+      return;
+    }
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selected = content.slice(start, end);
+    const inner = selected || placeholder;
+    const next = `${content.slice(0, start)}${before}${inner}${after}${content.slice(end)}`;
+    setContent(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      if (selected) {
+        el.setSelectionRange(
+          start + before.length,
+          start + before.length + inner.length
+        );
+      } else {
+        const pos = start + before.length;
+        el.setSelectionRange(pos, pos + inner.length);
+      }
+    });
+  }
+
+  function insertLinePrefix(prefix: string) {
+    const el = contentRef.current;
+    if (!el) {
+      insertAtCursor(`\n${prefix}`);
+      return;
+    }
+    const start = el.selectionStart;
+    const lineStart = content.lastIndexOf("\n", start - 1) + 1;
+    const next = `${content.slice(0, lineStart)}${prefix}${content.slice(lineStart)}`;
+    setContent(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + prefix.length;
       el.setSelectionRange(pos, pos);
     });
   }
@@ -98,7 +190,8 @@ export default function NewPostPage() {
     setUploadingBodyImage(true);
     try {
       const url = await uploadImage(file, "content");
-      insertAtCursor(`\n![이미지](${url})\n`);
+      const sizeTitle = bodyImgSize === "lg" ? "" : ` "${bodyImgSize}"`;
+      insertAtCursor(`\n![이미지](${url}${sizeTitle})\n`);
       setPreview(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.");
@@ -215,14 +308,108 @@ export default function NewPostPage() {
               </div>
 
               <div className="border border-outline-variant overflow-hidden">
-                <div className="border-b border-outline-variant bg-surface-container-low px-3 py-2 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">
+                <div className="border-b border-outline-variant bg-surface-container-low px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant mr-1">
                       Markdown
                     </span>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 text-[12px] px-2.5 py-1.5 border border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-on-surface transition-colors disabled:opacity-50"
+                      className={TOOLBAR_BTN}
+                      disabled={preview}
+                      onClick={() => wrapSelection("**", "**", "굵게")}
+                      title="굵게"
+                    >
+                      B
+                    </button>
+                    <button
+                      type="button"
+                      className={`${TOOLBAR_BTN} italic`}
+                      disabled={preview}
+                      onClick={() => wrapSelection("*", "*", "기울임")}
+                      title="기울임"
+                    >
+                      I
+                    </button>
+                    <button
+                      type="button"
+                      className={TOOLBAR_BTN}
+                      disabled={preview}
+                      onClick={() => wrapSelection("~~", "~~", "취소선")}
+                      title="취소선"
+                    >
+                      S
+                    </button>
+                    <button
+                      type="button"
+                      className={TOOLBAR_BTN}
+                      disabled={preview}
+                      onClick={() => insertLinePrefix("## ")}
+                      title="제목"
+                    >
+                      H2
+                    </button>
+                    <button
+                      type="button"
+                      className={TOOLBAR_BTN}
+                      disabled={preview}
+                      onClick={() => wrapSelection("`", "`", "코드")}
+                      title="인라인 코드"
+                    >
+                      {"</>"}
+                    </button>
+                    <button
+                      type="button"
+                      className={TOOLBAR_BTN}
+                      disabled={preview}
+                      onClick={() =>
+                        wrapSelection("[", "](https://)", "링크 텍스트")
+                      }
+                      title="링크"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        link
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={TOOLBAR_BTN}
+                      disabled={preview}
+                      onClick={() => insertLinePrefix("- ")}
+                      title="목록"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        format_list_bulleted
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={TOOLBAR_BTN}
+                      disabled={preview}
+                      onClick={() => insertLinePrefix("> ")}
+                      title="인용"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        format_quote
+                      </span>
+                    </button>
+                    <span className="w-px h-5 bg-outline-variant mx-0.5" />
+                    <select
+                      className="h-8 text-[12px] bg-surface-container-lowest border border-outline-variant px-2 text-on-surface-variant outline-none disabled:opacity-50"
+                      value={bodyImgSize}
+                      disabled={preview || uploadingBodyImage}
+                      onChange={(e) =>
+                        setBodyImgSize(e.target.value as ImgSize)
+                      }
+                      title="본문 이미지 크기"
+                    >
+                      <option value="sm">작게</option>
+                      <option value="md">중간</option>
+                      <option value="lg">크게</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-[12px] px-2.5 h-8 border border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-on-surface transition-colors disabled:opacity-50"
                       disabled={uploadingBodyImage || preview}
                       onClick={() => bodyImageInputRef.current?.click()}
                       title="본문에 이미지 삽입"
@@ -268,7 +455,7 @@ export default function NewPostPage() {
                       ref={contentRef}
                       className="w-full min-h-72 resize-y bg-transparent border-none outline-none text-body-md text-on-surface placeholder:text-on-surface-variant/40 font-mono text-sm"
                       placeholder={
-                        "## 제목\n\n본문을 **마크다운**으로 작성하세요.\n\n툴바의 이미지 버튼으로 사진을 넣을 수 있습니다."
+                        "## 제목\n\n본문을 **마크다운**으로 작성하세요.\n\n툴바의 B / I / 이미지 버튼으로 서식과 사진을 넣을 수 있습니다."
                       }
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
@@ -308,7 +495,7 @@ export default function NewPostPage() {
                     <button
                       className="w-full bg-on-surface text-background py-3 font-semibold text-sm uppercase tracking-[0.12em] hover:opacity-80 transition-opacity disabled:opacity-50"
                       type="submit"
-                      disabled={saving || uploadingBodyImage}
+                      disabled={saving || uploadingBodyImage || generatingCover}
                     >
                       {saving ? "…" : t("newPost.publish")}
                     </button>
@@ -351,17 +538,29 @@ export default function NewPostPage() {
                     }
                   />
                 </label>
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center justify-center gap-1.5 border border-outline-variant text-on-surface text-sm py-2.5 hover:bg-surface-container-low transition-colors disabled:opacity-50"
+                  disabled={generatingCover || saving || !title.trim()}
+                  onClick={() => void generateCoverWithAi()}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    auto_awesome
+                  </span>
+                  {generatingCover ? "AI 생성 중…" : "AI로 썸네일 생성"}
+                </button>
                 {coverFile ? (
                   <button
                     type="button"
                     className="w-full text-sm text-on-surface-variant hover:text-error"
                     onClick={() => onCoverPick(null)}
+                    disabled={generatingCover}
                   >
                     이미지 제거
                   </button>
                 ) : (
                   <p className="font-label-sm text-outline-variant text-center">
-                    JPG/PNG/WebP · 최대 5MB · 없으면 기본 이미지
+                    업로드 또는 AI 생성 · JPG/PNG/WebP · 최대 5MB
                   </p>
                 )}
               </div>

@@ -29,24 +29,24 @@ export function PostCard({
     return (
       <Link
         href={`/blog/${p.slug}`}
-        className={`group grid grid-cols-1 lg:grid-cols-12 ${cardShell}`}
+        className={`group grid grid-cols-1 md:grid-cols-12 ${cardShell}`}
       >
-        <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col justify-center p-6 md:p-8 lg:p-10 min-h-0">
-          <p className="text-[12px] uppercase tracking-[0.14em] text-on-surface-variant mb-4">
+        <div className="md:col-span-5 order-2 md:order-1 flex flex-col justify-center p-4 md:p-5 lg:p-6 min-h-0">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-on-surface-variant mb-2">
             {date}
             <span className="mx-2 text-outline-variant">|</span>
             {cat}
           </p>
-          <h2 className="text-[26px] md:text-[32px] lg:text-[38px] font-bold leading-[1.15] tracking-tight text-on-surface mb-4">
+          <h2 className="text-[18px] md:text-[22px] lg:text-[24px] font-bold leading-snug tracking-tight text-on-surface mb-2">
             {p.title}
           </h2>
           {p.excerpt ? (
-            <p className="text-[15px] leading-relaxed text-on-surface-variant line-clamp-4 max-w-md">
+            <p className="text-[13px] leading-relaxed text-on-surface-variant line-clamp-2 max-w-md">
               {p.excerpt}
             </p>
           ) : null}
         </div>
-        <div className="lg:col-span-7 order-1 lg:order-2 aspect-[4/3] lg:aspect-auto lg:min-h-[340px] overflow-hidden bg-surface-container">
+        <div className="md:col-span-7 order-1 md:order-2 aspect-[16/10] md:aspect-auto md:min-h-[180px] md:max-h-[220px] overflow-hidden bg-surface-container">
           <img
             src={cover}
             alt=""
